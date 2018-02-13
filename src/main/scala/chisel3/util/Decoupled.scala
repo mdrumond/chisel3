@@ -279,11 +279,16 @@ object Queue
       entries: Int = 2,
       pipe: Boolean = false,
       flow: Boolean = false): DecoupledIO[T] = {
-    val q = Module(new Queue(chiselTypeOf(enq.bits), entries, pipe, flow))
-    q.io.enq.valid := enq.valid // not using <> so that override is allowed
-    q.io.enq.bits := enq.bits
-    enq.ready := q.io.enq.ready
-    TransitName(q.io.deq, q)
+    if (entries == 0) {
+      enq
+    } else {
+      require(entries > 0)
+      val q = Module(new Queue(chiselTypeOf(enq.bits), entries, pipe, flow))
+      q.io.enq.valid := enq.valid // not using <> so that override is allowed
+      q.io.enq.bits := enq.bits
+      enq.ready := q.io.enq.ready
+      TransitName(q.io.deq, q)
+    }
   }
 
   /** Create a queue and supply a IrrevocableIO containing the product.
@@ -297,6 +302,7 @@ object Queue
       entries: Int = 2,
       pipe: Boolean = false,
       flow: Boolean = false): IrrevocableIO[T] = {
+    require(entries > 0) // Zero-entry queues don't guarantee Irrevocability
     val deq = apply(enq, entries, pipe, flow)
     val irr = Wire(new IrrevocableIO(deq.bits))
     irr.bits := deq.bits
